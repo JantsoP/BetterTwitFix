@@ -465,7 +465,8 @@ def embed(video_link, vnf, image):
         url        = config['config']['url'], 
         urlDesc    = urlDesc, 
         urlUser    = urlUser, 
-        urlLink    = urlLink )
+        urlLink    = urlLink,
+        tweetLink  = vnf['tweet'] )
 
 def tweetType(tweet): # Are we dealing with a Video, Image, or Text tweet?
     if 'extended_entities' in tweet:
