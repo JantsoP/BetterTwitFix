@@ -18,7 +18,11 @@
   },
   "homepage": "https://github.com/dylanpdx/BetterTwitFix#readme",
   "dependencies": {
-    "serverless-python-requirements": "^5.4.0",
     "serverless-wsgi": "^3.0.0"
+  },
+  "devDependencies": {
+    "serverless-plugin-common-excludes": "^4.0.0",
+    "serverless-plugin-include-dependencies": "^5.0.0",
+    "serverless-python-requirements": "^5.4.0"
   }
 }

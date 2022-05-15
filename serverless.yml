@@ -2,19 +2,30 @@ service: twitfix
 
 provider:
   name: aws
-  runtime: python3.9
+  runtime: python3.6
+
+package:
+  patterns:
+    - '!node_modules/**'
+    - '!venv/**'
 
 plugins:
   - serverless-wsgi
   - serverless-python-requirements
+  - serverless-plugin-common-excludes
+  - serverless-plugin-include-dependencies
 
 functions:
   webhook:
     handler: wsgi_handler.handler
     url: true
+    layers:
+      - Ref: PythonRequirementsLambdaLayer
+
 
 custom:
   wsgi:
     app: twitfix.app
   pythonRequirements:
-    pythonBin: python
+    layer: true
+    dockerizePip: true
