@@ -2,3 +2,9 @@ config.json
 __pycache__
 venv/
 links.json
+node_modules
+#SERVERLESS STUFF
+admin.env
+.env
+_meta
+.serverless

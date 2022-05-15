@@ -1,0 +1,20 @@
+service: twitfix
+
+provider:
+  name: aws
+  runtime: python3.9
+
+plugins:
+  - serverless-wsgi
+  - serverless-python-requirements
+
+functions:
+  webhook:
+    handler: wsgi_handler.handler
+    url: true
+
+custom:
+  wsgi:
+    app: twitfix.app
+  pythonRequirements:
+    pythonBin: python
