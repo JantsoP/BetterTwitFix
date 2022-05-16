@@ -1,8 +1,36 @@
-service: twitfix
+service: vxTwitter
 
 provider:
   name: aws
   runtime: python3.6
+  stage: dev
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - { "Fn::GetAtt": ["vxTwitterDynamoTable", "Arn" ] }
+  environment:
+    CACHE_TABLE: ${self:custom.tableName}
+    RUNNING_SERVERLESS: 1
+    VXTWITTER_LINK_CACHE: dynamodb
+    VXTWITTER_DATABASE: none
+    VXTWITTER_DATABASE_TABLE: none
+    VXTWITTER_METHOD: youtube-dl
+    VXTWITTER_COLOR: \#43B581
+    VXTWITTER_APP_NAME: vxTwitter
+    VXTWITTER_REPO: https://github.com/dylanpdx/BetterTwitFix
+    VXTWITTER_URL: https://vxtwitter.com
+    # Twitter API keys
+    VXTWITTER_TWITTER_API_KEY: none
+    VXTWITTER_TWITTER_API_SECRET: none
+    VXTWITTER_TWITTER_ACCESS_TOKEN: none
+    VXTWITTER_TWITTER_ACCESS_SECRET: none
 
 package:
   patterns:
@@ -16,7 +44,7 @@ plugins:
   - serverless-plugin-include-dependencies
 
 functions:
-  webhook:
+  vxTwitterApp:
     handler: wsgi_handler.handler
     url: true
     layers:
@@ -24,8 +52,28 @@ functions:
 
 
 custom:
+  tableName: 'users-table-${self:provider.stage}'
   wsgi:
     app: twitfix.app
   pythonRequirements:
     layer: true
     dockerizePip: true
+
+	
+resources:
+  Resources:
+    vxTwitterDynamoTable:
+      Type: 'AWS::DynamoDB::Table'
+      Properties:
+        AttributeDefinitions:
+          -
+            AttributeName: tweet
+            AttributeType: S
+        KeySchema:
+          -
+            AttributeName: tweet
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:custom.tableName}

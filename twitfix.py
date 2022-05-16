@@ -11,6 +11,7 @@ import os
 import urllib.parse
 import urllib.request
 from datetime import date
+import boto3
 
 app = Flask(__name__)
 CORS(app)
@@ -33,26 +34,46 @@ generate_embed_user_agents = [
 
 # Read config from config.json. If it does not exist, create new.
 if not os.path.exists("config.json"):
-    with open("config.json", "w") as outfile:
-        default_config = {
-            "config":{
-                "link_cache":"json",
-                "database":"[url to mongo database goes here]",
-                "table":"TwiFix",
-                "method":"youtube-dl", 
-                "color":"#43B581", 
-                "appname": "vxTwitter", 
-                "repo": "https://github.com/dylanpdx/BetterTwitFix", 
-                "url": "https://vxtwitter.com"
-                },
-            "api":{"api_key":"[api_key goes here]",
-            "api_secret":"[api_secret goes here]",
-            "access_token":"[access_token goes here]",
-            "access_secret":"[access_secret goes here]"
+    serverless_check = os.environ.get('RUNNING_SERVERLESS')
+    if serverless_check == None: # Running on local pc, therefore we can access the filesystem
+        with open("config.json", "w") as outfile:
+            default_config = {
+                "config":{
+                    "link_cache":"dynamodb",
+                    "database":"[url to mongo database goes here]",
+                    "table":"TwiFix",
+                    "method":"youtube-dl", 
+                    "color":"#43B581", 
+                    "appname": "vxTwitter", 
+                    "repo": "https://github.com/dylanpdx/BetterTwitFix", 
+                    "url": "https://vxtwitter.com"
+                    },
+                "api":{"api_key":"[api_key goes here]",
+                "api_secret":"[api_secret goes here]",
+                "access_token":"[access_token goes here]",
+                "access_secret":"[access_secret goes here]"
+                }
             }
-        }
-
-        json.dump(default_config, outfile, indent=4, sort_keys=True)
+            json.dump(default_config, outfile, indent=4, sort_keys=True)
+    else: # Running on serverless, therefore we cannot access the filesystem and must use environment variables
+            default_config = {
+                "config":{
+                    "link_cache":os.environ['VXTWITTER_LINK_CACHE'],
+                    "database":os.environ['VXTWITTER_DATABASE'],
+                    "table":os.environ['VXTWITTER_DATABASE_TABLE'],
+                    "method":os.environ['VXTWITTER_METHOD'],
+                    "color":os.environ['VXTWITTER_COLOR'],
+                    "appname": os.environ['VXTWITTER_APP_NAME'],
+                    "repo": os.environ['VXTWITTER_REPO'],
+                    "url": os.environ['VXTWITTER_URL'],
+                    },
+                "api":{
+                    "api_key":os.environ['VXTWITTER_TWITTER_API_KEY'],
+                    "api_secret":os.environ['VXTWITTER_TWITTER_API_SECRET'],
+                    "access_token":os.environ['VXTWITTER_TWITTER_ACCESS_TOKEN'],
+                    "access_secret":os.environ['VXTWITTER_TWITTER_ACCESS_SECRET']
+                }
+            }
 
     config = default_config
 else:
@@ -66,6 +87,9 @@ if config['config']['method'] in ('api', 'hybrid'):
     twitter_api = twitter.Twitter(auth=auth)
 
 link_cache_system = config['config']['link_cache']
+DYNAMO_CACHE_TBL=None
+if link_cache_system=="dynamodb":
+    DYNAMO_CACHE_TBL=os.environ['CACHE_TABLE']
 
 if link_cache_system == "json":
     link_cache = {}
@@ -81,6 +105,8 @@ elif link_cache_system == "db":
     client = pymongo.MongoClient(config['config']['database'], connect=False)
     table = config['config']['table']
     db = client[table]
+elif link_cache_system == "dynamodb":
+    client = boto3.resource('dynamodb')
 
 @app.route('/') # If the useragent is discord, return the embed, if not, redirect to configured repo directly
 def default():
@@ -381,6 +407,20 @@ def getVnfFromLinkCache(video_link):
         else:
             print(" ➤ [ X ] Link not in json cache")
             return None
+    elif link_cache_system == "dynamodb":
+        table = client.Table(DYNAMO_CACHE_TBL)
+        response = table.get_item(
+            Key={
+                'tweet': video_link
+            }
+        )
+        if 'Item' in response:
+            print("Link located in dynamodb cache")
+            vnf = response['Item']
+            return vnf
+        else:
+            print(" ➤ [ X ] Link not in dynamodb cache")
+            return None
 
 def addVnfToLinkCache(video_link, vnf):
     if link_cache_system == "db":
@@ -396,6 +436,16 @@ def addVnfToLinkCache(video_link, vnf):
         with open("links.json", "w") as outfile: 
             json.dump(link_cache, outfile, indent=4, sort_keys=True)
             return None
+    elif link_cache_system == "dynamodb":
+        table = client.Table(DYNAMO_CACHE_TBL)
+        table.put_item(
+            Item={
+                'tweet': video_link,
+                'vnf': vnf
+            }
+        )
+        print(" ➤ [ + ] Link added to dynamodb cache ")
+        return True
 
 def message(text):
     return render_template(
@@ -407,6 +457,7 @@ def message(text):
         url     = config['config']['url'] )
 
 def embed(video_link, vnf, image):
+    print(vnf)
     print(" ➤ [ E ] Embedding " + vnf['type'] + ": " + vnf['url'])
     
     desc    = re.sub(r' http.*t\.co\S+', '', vnf['description'])
