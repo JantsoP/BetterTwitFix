@@ -292,7 +292,7 @@ def link_to_vnf_from_api(video_link):
     twid = int(re.sub(r'\?.*$','',video_link.rsplit("/", 1)[-1])) # gets the tweet ID as a int from the passed url
     tweet = twitter_api.statuses.show(_id=twid, tweet_mode="extended")
     # For when I need to poke around and see what a tweet looks like
-    #print(tweet)
+    print(tweet)
     imgs = ["","","","", ""]
     print(" ➤ [ + ] Tweet Type: " + tweetType(tweet))
     # Check to see if tweet has a video, if not, make the url passed to the VNF the first t.co link in the tweet
@@ -416,7 +416,7 @@ def getVnfFromLinkCache(video_link):
         )
         if 'Item' in response:
             print("Link located in dynamodb cache")
-            vnf = response['Item']
+            vnf = response['Item']['vnf']
             return vnf
         else:
             print(" ➤ [ X ] Link not in dynamodb cache")
