@@ -1,7 +1,7 @@
 ﻿pymongo==4.3.3
 boto3==1.26.37
 requests==2.28.1
-Pillow==9.3.0
+Pillow==9.4.0
 Flask==2.2.2
 Flask-Cors==3.0.10
 yt-dlp==2022.7.18
